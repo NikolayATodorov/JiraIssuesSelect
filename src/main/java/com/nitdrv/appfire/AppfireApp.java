@@ -1,12 +1,18 @@
 package com.nitdrv.appfire;
 
+import com.mashape.unirest.http.exceptions.UnirestException;
 import com.nitdrv.appfire.config.ApplicationProperties;
 import com.nitdrv.appfire.config.CRLFLogConverter;
+import com.nitdrv.appfire.domain.Issue;
+import com.nitdrv.appfire.service.JIRAClient;
+import com.nitdrv.appfire.service.JIRADataProcessor;
 import jakarta.annotation.PostConstruct;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -69,6 +75,21 @@ public class AppfireApp {
         DefaultProfileUtil.addDefaultProfile(app);
         Environment env = app.run(args).getEnvironment();
         logApplicationStartup(env);
+
+        JIRAClient jiraClient = new JIRAClient();
+        JIRADataProcessor dataProcessor = new JIRADataProcessor();
+
+        try {
+            String jsonData = jiraClient.fetchIssues2();
+            List<Issue> issues = dataProcessor.parseIssues(jsonData);
+
+            dataProcessor.writeJson(issues, "issues.json");
+            dataProcessor.writeXml(issues, "issues.xml");
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (UnirestException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static void logApplicationStartup(Environment env) {
